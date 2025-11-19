@@ -3,6 +3,7 @@ import FieldList from './components/FieldList'
 import ReserveForm from './components/ReserveForm'
 import Auth from './components/Auth'
 import AdminPanel from './components/AdminPanel'
+import WhatsAppBubble from './components/WhatsAppBubble'
 import { supabase } from './supabase/client'
 
 export default function App(){
@@ -69,6 +70,7 @@ export default function App(){
           </section>
         </div>
       </main>
+        <WhatsAppBubble phone="+50670000000" message="Hola! Quisiera información sobre reservar una cancha." />
     </div>
   )
 }
