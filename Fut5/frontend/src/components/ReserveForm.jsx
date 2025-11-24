@@ -49,20 +49,63 @@ export default function ReserveForm({ profile, preselectFieldId }) {
       const start = new Date(`${date}T${hour.padStart(2, '0')}:00:00`);
       const end = new Date(start);
       end.setHours(end.getHours() + 1);
-      const payload = {
-        field_id: fieldId,
-        user_id: user.id,
-        start: start.toISOString(),
-        end: end.toISOString(),
-        status: 'booked',
-        notes: null,
-      };
-      const { error } = await supabase.from('reservations').insert(payload);
-      if (error) {
-        setMessage('Error al reservar: ' + error.message);
-      } else {
-        setMessage('¡Reserva exitosa! Nos vemos en la cancha ⚽');
+      // Check for overlapping confirmed reservations for the same field
+      const startISO = start.toISOString();
+      const endISO = end.toISOString();
+      const { data: overlaps, error: overlapError } = await supabase
+        .from('reservations')
+        .select('id,status,start,end')
+        .eq('field_id', fieldId)
+        .lt('start', endISO)
+        .gt('end', startISO)
+        .in('status', ['confirmed']);
+
+      if (overlapError) {
+        console.warn('Error checking overlaps', overlapError);
       }
+
+      if (overlaps && overlaps.length) {
+        setMessage('La franja seleccionada ya está ocupada (reserva confirmada). Elige otra hora.');
+        setLoading(false);
+        return;
+      }
+
+      // Create a pending reservation via RPC (returns confirmation token)
+      const rpcRes = await supabase.rpc('create_pending_reservation', {
+        p_field_id: fieldId,
+        p_user_id: user.id,
+        p_start: startISO,
+        p_end: endISO,
+        p_hold_minutes: 15,
+        p_notes: null,
+      });
+
+      if (rpcRes.error) {
+        setMessage('Error al crear la reserva: ' + rpcRes.error.message);
+        setLoading(false);
+        return;
+      }
+
+      // rpc returns reservation_id, confirmation_token, expires_at
+      const [created] = rpcRes.data || [];
+      const reservation_id = created?.reservation_id || null;
+      const confirmation_token = created?.confirmation_token || null;
+
+      // Try to notify via webhook if configured (e.g., send email/WhatsApp from server)
+      const notifyUrl = import.meta.env.VITE_NOTIFICATION_WEBHOOK;
+      if (notifyUrl && reservation_id && confirmation_token) {
+        try {
+          await fetch(notifyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reservation_id, confirmation_token, field_id: fieldId, start: startISO, end: endISO, user_id: user.id }),
+          });
+        } catch (err) {
+          console.warn('No se pudo llamar al webhook de notificación:', err.message || err);
+        }
+      }
+
+      setMessage(`Reserva creada (pendiente). Revisa tu correo para confirmar. Token: ${confirmation_token || ''}`);
     } catch (err) {
       setMessage('Error inesperado: ' + err.message);
     } finally {
