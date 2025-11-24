@@ -40,7 +40,7 @@ export function useSupabaseQuery(table, options = {}) {
     if (autoFetch) {
       fetchData()
     }
-  }, [table, orderBy, orderAscending])
+  }, [table, orderBy, orderAscending, autoFetch])
 
   return { data, loading, error, refetch: fetchData }
 }

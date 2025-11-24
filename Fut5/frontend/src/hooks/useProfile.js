@@ -13,7 +13,7 @@ export function useProfile() {
     const { data: sub } = supabase.auth.onAuthStateChange(() => {
       fetchProfile()
     })
-    return () => sub.subscription?.unsubscribe && sub.subscription.unsubscribe()
+    return () => sub.subscription?.unsubscribe()
   }, [])
 
   async function fetchProfile() {

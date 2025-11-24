@@ -13,7 +13,7 @@ export function useAuth() {
     const { data: sub } = supabase.auth.onAuthStateChange(() => {
       fetchUser()
     })
-    return () => sub.subscription?.unsubscribe && sub.subscription.unsubscribe()
+    return () => sub.subscription?.unsubscribe()
   }, [])
 
   async function fetchUser() {
