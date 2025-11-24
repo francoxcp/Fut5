@@ -1,18 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase/client';
+import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
+import { useLoadingState } from '../hooks/useLoadingState';
 
 export default function ReserveForm({ profile, preselectFieldId }) {
-  const [fields, setFields] = useState([]);
+  const { data: fields } = useSupabaseQuery('fields', { orderBy: 'name' });
   const [fieldId, setFieldId] = useState('');
   const [date, setDate] = useState('');
   const [hour, setHour] = useState('14');
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(null);
+  const { loading, message, startLoading, setError, setSuccessMessage } = useLoadingState();
 
   useEffect(() => {
-    fetchFields();
-  }, []);
+    if (fields && fields.length && !fieldId) {
+      setFieldId(fields[0].id);
+    }
+  }, [fields]);
 
   useEffect(()=>{
     if(preselectFieldId){
@@ -20,22 +23,14 @@ export default function ReserveForm({ profile, preselectFieldId }) {
     }
   }, [preselectFieldId])
 
-  async function fetchFields() {
-    const { data, error } = await supabase.from('fields').select('*').order('name');
-    if (error) { console.error('Error fetching fields', error); return; }
-    setFields(data);
-    if (data && data.length) setFieldId(data[0].id);
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage(null);
-    setLoading(true);
+    startLoading();
     try {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
-      if (!user) { setMessage('Debes iniciar sesión para reservar.'); setLoading(false); return; }
-      if (!fieldId || !date || !hour) { setMessage('Completa todos los campos.'); setLoading(false); return; }
+      if (!user) { setError('Debes iniciar sesión para reservar.'); return; }
+      if (!fieldId || !date || !hour) { setError('Completa todos los campos.'); return; }
       // Reserva simple: fecha y hora seleccionada, duración 1h
       const start = new Date(`${date}T${hour.padStart(2, '0')}:00:00`);
       const end = new Date(start);
@@ -50,14 +45,12 @@ export default function ReserveForm({ profile, preselectFieldId }) {
       };
       const { data, error } = await supabase.from('reservations').insert(payload).select().single();
       if (error) {
-        setMessage('Error al reservar: ' + error.message);
+        setError('Error al reservar: ' + error.message);
       } else {
-        setMessage('¡Reserva exitosa! Nos vemos en la cancha ⚽');
+        setSuccessMessage('¡Reserva exitosa! Nos vemos en la cancha ⚽');
       }
     } catch (err) {
-      setMessage('Error inesperado: ' + err.message);
-    } finally {
-      setLoading(false);
+      setError('Error inesperado: ' + err.message);
     }
   };
 

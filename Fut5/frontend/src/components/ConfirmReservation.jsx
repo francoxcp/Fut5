@@ -1,29 +1,26 @@
 import React, { useState } from 'react'
 import { supabase } from '../supabase/client'
+import { useLoadingState } from '../hooks/useLoadingState'
 
 export default function ConfirmReservation(){
   const [resId, setResId] = useState('')
   const [token, setToken] = useState('')
-  const [message, setMessage] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const { loading, message, startLoading, setError, setSuccessMessage } = useLoadingState()
 
   const handleConfirm = async (e) => {
     e.preventDefault()
-    setLoading(true)
-    setMessage(null)
+    startLoading()
     try{
       const { data, error } = await supabase.rpc('confirm_reservation_by_token', { res_id: resId, token })
       if(error){
-        setMessage('Error: ' + error.message)
+        setError('Error: ' + error.message)
       } else {
         // data could be 'confirmed' / 'failed' / 'conflict'
         const result = Array.isArray(data) && data.length ? data[0] : data
-        setMessage('Resultado: ' + result)
+        setSuccessMessage('Resultado: ' + result)
       }
     }catch(err){
-      setMessage('Error inesperado: ' + err.message)
-    }finally{
-      setLoading(false)
+      setError('Error inesperado: ' + err.message)
     }
   }
 

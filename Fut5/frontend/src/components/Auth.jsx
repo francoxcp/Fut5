@@ -1,56 +1,41 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { supabase } from '../supabase/client'
+import { useAuth } from '../hooks/useAuth'
+import { useLoadingState } from '../hooks/useLoadingState'
 
 export default function Auth(){
-  const [user, setUser] = useState(null)
+  const { user } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [phone, setPhone] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState(null)
-
-  useEffect(()=>{
-    getUser()
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      getUser()
-    })
-    return () => sub.subscription?.unsubscribe && sub.subscription.unsubscribe()
-  }, [])
-
-  async function getUser(){
-    const { data } = await supabase.auth.getUser()
-    setUser(data.user || null)
-  }
+  const { loading, message, startLoading, setError, setSuccessMessage } = useLoadingState()
 
   async function handleSignUp(e){
-    e.preventDefault(); setLoading(true); setMessage(null)
+    e.preventDefault()
+    startLoading()
     const { data, error } = await supabase.auth.signUp({ email, password })
-    if(error) setMessage(error.message)
-    else setMessage('Registrado. Revisa tu email para verificar.')
-    setLoading(false)
+    if(error) setError(error)
+    else setSuccessMessage('Registrado. Revisa tu email para verificar.')
   }
 
   async function handleSignIn(e){
-    e.preventDefault(); setLoading(true); setMessage(null)
+    e.preventDefault()
+    startLoading()
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if(error) setMessage(error.message)
-    else setMessage('Sesión iniciada')
-    setLoading(false)
-    getUser()
+    if(error) setError(error)
+    else setSuccessMessage('Sesión iniciada')
   }
 
   async function handleSignOut(){
     await supabase.auth.signOut()
-    setUser(null)
   }
 
   async function handlePhoneOtp(e){
-    e.preventDefault(); setLoading(true); setMessage(null)
-    // Envío OTP al teléfono
+    e.preventDefault()
+    startLoading()
     const { data, error } = await supabase.auth.signInWithOtp({ phone })
-    if(error) setMessage(error.message)
-    else setMessage('Se envió código al teléfono.')
-    setLoading(false)
+    if(error) setError(error)
+    else setSuccessMessage('Se envió código al teléfono.')
   }
 
   return (

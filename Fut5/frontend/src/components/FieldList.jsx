@@ -1,36 +1,10 @@
-import React, { useEffect, useState } from 'react'
-import { supabase } from '../supabase/client'
+import React from 'react'
+import { useSupabaseQuery } from '../hooks/useSupabaseQuery'
 
 export default function FieldList({ onQuickReserve, preselectFieldId }){
-  const [fields, setFields] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [errorMsg, setErrorMsg] = useState(null)
-
-  useEffect(()=>{
-    load()
-  }, [])
-
-  async function load(){
-    setLoading(true)
-    setErrorMsg(null)
-    try{
-      console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL)
-      const { data, error } = await supabase.from('fields').select('*').order('name')
-      if(error){
-        console.error('Error cargando canchas', error)
-        setErrorMsg(error.message || String(error))
-        setFields([])
-      } else {
-        setFields(data || [])
-      }
-    }catch(err){
-      console.error('Exception fetching fields', err)
-      setErrorMsg(err.message || String(err))
-      setFields([])
-    }finally{
-      setLoading(false)
-    }
-  }
+  const { data: fields, loading, error: errorMsg } = useSupabaseQuery('fields', { orderBy: 'name' })
+  
+  console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL)
 
   return (
     <section>

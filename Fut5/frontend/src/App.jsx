@@ -1,32 +1,15 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import FieldList from './components/FieldList'
 import ReserveForm from './components/ReserveForm'
 import Auth from './components/Auth'
 import AdminPanel from './components/AdminPanel'
 import WhatsAppBubble from './components/WhatsAppBubble'
-import { supabase } from './supabase/client'
+import { useProfile } from './hooks/useProfile'
 
 export default function App(){
   const [view, setView] = useState('principal') // 'auth' | 'principal' | 'admin'
-  const [profile, setProfile] = useState(null)
+  const { profile } = useProfile()
   const [preselectFieldId, setPreselectFieldId] = useState(null)
-
-  useEffect(()=>{
-    fetchProfile()
-    const { data: sub } = supabase.auth.onAuthStateChange(()=>{
-      fetchProfile()
-    })
-    return () => sub.subscription?.unsubscribe && sub.subscription.unsubscribe()
-  }, [])
-
-  async function fetchProfile(){
-    const { data: userData } = await supabase.auth.getUser()
-    const user = userData.user
-    if(!user){ setProfile(null); return }
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-    if(error){ setProfile(null); return }
-    setProfile(data)
-  }
 
   return (
     <div className="app">

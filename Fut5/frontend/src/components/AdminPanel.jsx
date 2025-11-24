@@ -1,19 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { supabase } from '../supabase/client'
+import { useSupabaseQuery } from '../hooks/useSupabaseQuery'
 
 export default function AdminPanel(){
-  const [reservations, setReservations] = useState([])
-  const [loading, setLoading] = useState(false)
-
-  useEffect(()=>{ load() }, [])
-
-  async function load(){
-    setLoading(true)
-    const { data, error } = await supabase.from('reservations').select('*').order('start', {ascending:true})
-    if(error){ console.error('Error loading reservations', error); setLoading(false); return }
-    setReservations(data)
-    setLoading(false)
-  }
+  const { data: reservations, loading, refetch: load } = useSupabaseQuery('reservations', { orderBy: 'start' })
 
   async function markCheckedIn(id, user_id){
     // set status = 'checked_in'
