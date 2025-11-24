@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase/client';
+import Auth from './Auth';
 
 export default function ReserveForm({ profile, preselectFieldId }) {
   const [fields, setFields] = useState([]);
@@ -9,20 +9,24 @@ export default function ReserveForm({ profile, preselectFieldId }) {
   const [hour, setHour] = useState('14');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     fetchFields();
   }, []);
 
-  useEffect(()=>{
-    if(preselectFieldId){
-      setFieldId(preselectFieldId)
+  useEffect(() => {
+    if (preselectFieldId) {
+      setFieldId(preselectFieldId);
     }
-  }, [preselectFieldId])
+  }, [preselectFieldId]);
 
   async function fetchFields() {
     const { data, error } = await supabase.from('fields').select('*').order('name');
-    if (error) { console.error('Error fetching fields', error); return; }
+    if (error) {
+      console.error('Error fetching fields', error);
+      return;
+    }
     setFields(data);
     if (data && data.length) setFieldId(data[0].id);
   }
@@ -32,11 +36,16 @@ export default function ReserveForm({ profile, preselectFieldId }) {
     setMessage(null);
     setLoading(true);
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const user = userData.user;
-      if (!user) { setMessage('Debes iniciar sesión para reservar.'); setLoading(false); return; }
-      if (!fieldId || !date || !hour) { setMessage('Completa todos los campos.'); setLoading(false); return; }
-      // Reserva simple: fecha y hora seleccionada, duración 1h
+      if (!user) {
+        setMessage('Debes iniciar sesión para reservar.');
+        setLoading(false);
+        return;
+      }
+      if (!fieldId || !date || !hour) {
+        setMessage('Completa todos los campos.');
+        setLoading(false);
+        return;
+      }
       const start = new Date(`${date}T${hour.padStart(2, '0')}:00:00`);
       const end = new Date(start);
       end.setHours(end.getHours() + 1);
@@ -46,9 +55,9 @@ export default function ReserveForm({ profile, preselectFieldId }) {
         start: start.toISOString(),
         end: end.toISOString(),
         status: 'booked',
-        notes: null
+        notes: null,
       };
-      const { data, error } = await supabase.from('reservations').insert(payload).select().single();
+      const { error } = await supabase.from('reservations').insert(payload);
       if (error) {
         setMessage('Error al reservar: ' + error.message);
       } else {
@@ -61,37 +70,45 @@ export default function ReserveForm({ profile, preselectFieldId }) {
     }
   };
 
-  // Horas disponibles (14 a 22)
-  const hours = Array.from({ length: 9 }, (_, i) => (14 + i).toString());
-
   return (
-    <section className="reserva-box">
-      <h2 className="reserva-titulo">Reserva tu cancha</h2>
-      <form className="reserva-form" onSubmit={handleSubmit}>
-        <div className="reserva-campo">
-          <label>Cancha</label>
-          <select value={fieldId} onChange={e => setFieldId(e.target.value)}>
-            <option value="">Selecciona una cancha</option>
-            {fields.map(f => (
-              <option key={f.id} value={f.id}>{f.name} — {f.status}</option>
-            ))}
-          </select>
+    <section>
+      {!user ? (
+        <Auth onAuthChange={setUser} />
+      ) : (
+        <div>
+          <h2>Reserva tu cancha</h2>
+          <form onSubmit={handleSubmit}>
+            <label>Cancha</label>
+            <select value={fieldId} onChange={(e) => setFieldId(e.target.value)}>
+              <option value="">Selecciona una cancha</option>
+              {fields.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name} — {f.status}
+                </option>
+              ))}
+            </select>
+            <label>Fecha</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+            />
+            <label>Hora</label>
+            <select value={hour} onChange={(e) => setHour(e.target.value)}>
+              {Array.from({ length: 9 }, (_, i) => (14 + i).toString()).map((h) => (
+                <option key={h} value={h}>
+                  {h}:00
+                </option>
+              ))}
+            </select>
+            <button type="submit" disabled={loading}>
+              {loading ? 'Reservando...' : 'Reservar ahora'}
+            </button>
+          </form>
+          {message && <div>{message}</div>}
         </div>
-        <div className="reserva-campo">
-          <label>Fecha</label>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} min={new Date().toISOString().split('T')[0]} />
-        </div>
-        <div className="reserva-campo">
-          <label>Hora</label>
-          <select value={hour} onChange={e => setHour(e.target.value)}>
-            {hours.map(h => (
-              <option key={h} value={h}>{h}:00</option>
-            ))}
-          </select>
-        </div>
-        <button className="reserva-btn" type="submit" disabled={loading}>{loading ? 'Reservando...' : 'Reservar ahora'}</button>
-      </form>
-      {message && <div className="reserva-mensaje">{message}</div>}
+      )}
     </section>
   );
 }

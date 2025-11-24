@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../supabase/client'
 
-export default function Auth(){
+export default function Auth({ onAuthChange }) {
   const [user, setUser] = useState(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -13,18 +13,20 @@ export default function Auth(){
     getUser()
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       getUser()
+      onAuthChange(session?.user || null)
     })
     return () => sub.subscription?.unsubscribe && sub.subscription.unsubscribe()
-  }, [])
+  }, [onAuthChange])
 
   async function getUser(){
     const { data } = await supabase.auth.getUser()
     setUser(data.user || null)
+    onAuthChange(data.user || null)
   }
 
   async function handleSignUp(e){
     e.preventDefault(); setLoading(true); setMessage(null)
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { error } = await supabase.auth.signUp({ email, password })
     if(error) setMessage(error.message)
     else setMessage('Registrado. Revisa tu email para verificar.')
     setLoading(false)
@@ -32,7 +34,7 @@ export default function Auth(){
 
   async function handleSignIn(e){
     e.preventDefault(); setLoading(true); setMessage(null)
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
     if(error) setMessage(error.message)
     else setMessage('Sesión iniciada')
     setLoading(false)
@@ -42,6 +44,7 @@ export default function Auth(){
   async function handleSignOut(){
     await supabase.auth.signOut()
     setUser(null)
+    onAuthChange(null)
   }
 
   async function handlePhoneOtp(e){
